@@ -1,0 +1,8 @@
+# Full build
+dist/
+
+# Dependency directories
+node_modules/
+
+# Git stuff
+.git/
