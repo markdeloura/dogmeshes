@@ -6,19 +6,18 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --mode production --config ./webpack/webpack.prod.js",
-    "dev": "webpack serve --open --mode development --config ./webpack/webpack.dev.js"
+    "build": "NODE_OPTIONS=\"--openssl-legacy-provider\" webpack --config ./bundler/webpack.prod.js",
+    "dev": "NODE_OPTIONS=\"--openssl-legacy-provider\" webpack serve --config ./bundler/webpack.dev.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "dat.gui": "^0.7.9",
-    "three": "^0.151.3"
+    "lil-gui": "^0.18.1",
+    "three": "^0.152.2"
   },
   "devDependencies": {
-    "@types/dat.gui": "^0.7.9",
-    "@types/three": "^0.150.2",
+    "@types/three": "^0.152.0",
     "babel-loader": "^9.1.2",
     "clean-webpack-plugin": "^4.0.0",
     "copy-webpack-plugin": "^11.0.0",

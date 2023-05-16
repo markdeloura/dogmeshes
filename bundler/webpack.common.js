@@ -1,7 +1,6 @@
 import CopyWebpackPlugin from 'copy-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCSSExtractPlugin from 'mini-css-extract-plugin';
-import CSPHtmlWebpackPlugin from 'csp-html-webpack-plugin';
 import path from 'path';
 import {fileURLToPath} from 'url';
 
@@ -15,7 +14,8 @@ export const commonConfiguration = {
     output:
     {
 		filename: 'bundle.js',
-        path: path.resolve(__dirname, '../dist')
+        path: path.resolve(__dirname, '../dist'),
+        publicPath: '/'
     },
     devtool: 'source-map',
     plugins:
@@ -29,10 +29,6 @@ export const commonConfiguration = {
             template: path.resolve(__dirname, '../src/index.html'),
             minify: true
         }),
-		new CSPHtmlWebpackPlugin({
-			'default-src': "'self'",
-			'img-src': ["'self'", 'http://localhost:8080'],
-		}),
         new MiniCSSExtractPlugin()
     ],
     module:

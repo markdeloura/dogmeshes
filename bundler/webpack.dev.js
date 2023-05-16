@@ -21,6 +21,7 @@ export default merge(
 				directory: path.resolve(__dirname, '../dist'),
             	watch: true
 			},
+			historyApiFallback: true,
             open: true,
             https: false,
 			host: "local-ip",
