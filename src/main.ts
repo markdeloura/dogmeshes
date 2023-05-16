@@ -100,6 +100,15 @@ scene.add(cube);
 
 const clock = new THREE.Clock();
 
+const meshes:THREE.Mesh[] = [];
+const lines:THREE.LineSegments[] = [];
+
+// Set up GUI parameters
+const params = {
+    scale: 1
+};
+gui.add(params, 'scale').min(0).max(10).step(0.01);
+
 // Fetch the JSON file and parse the objects
 fetch("combined_objects.json")
     .then((response) => response.json())
@@ -169,15 +178,40 @@ fetch("combined_objects.json")
             });
         });
 
-        let objDepth = 0;
+        let objNum = 0;
 
         // Turn ObjectList objects into individual meshes
-        const meshes:THREE.Mesh[] = [];
         ObjectList.forEach((object: FoldyObject) => {
             // Create an array to store the vertices
             let verticesArray:number[] = [];
+
+            // Find the centerpoint of the object
+            let centerPoint:Vertex = {x:0, y:0};
             object.vertices.forEach((vertex: Vertex) => {
-                verticesArray.push(vertex.x, vertex.y, objDepth);
+                centerPoint.x += vertex.x;
+                centerPoint.y += vertex.y;
+            });
+            centerPoint.x /= object.vertices.length;
+            centerPoint.y /= object.vertices.length;
+            
+            // Find the vertex at maximum distance from the centerpoint
+            let maxDistance = 0;
+            let maxDistanceVertex:Vertex = {x:0, y:0};
+            object.vertices.forEach((vertex: Vertex) => {
+                const distance = Math.sqrt(Math.pow(vertex.x - centerPoint.x, 2) + Math.pow(vertex.y - centerPoint.y, 2));
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    maxDistanceVertex = vertex;
+                }
+            });
+
+            // Add the vertices to the array, but translate them so that centerPoint is at the origin, and scale them so maxDistanceVertex is 1 unit away from the origin
+            object.vertices.forEach((vertex: Vertex) => {
+                vertex.x -= centerPoint.x;
+                vertex.y -= centerPoint.y;
+                vertex.x /= maxDistance;
+                vertex.y /= maxDistance;
+                verticesArray.push(vertex.x, vertex.y, 0);
             });
 
             // Create an array to store the faces (indices)
@@ -190,28 +224,30 @@ fetch("combined_objects.json")
             const geometry = new THREE.BufferGeometry();
             const vertices = new Float32Array(verticesArray);
             geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-            console.log(vertices);
 
             const indices = new Uint32Array(indicesArray);
             geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-            console.log(indices);
             
             // Create the mesh
-            const faceMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });  // Adjust material as needed
+            const faceMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });  // Adjust material as needed
             const mesh = new THREE.Mesh(geometry, faceMaterial);
             meshes.push(mesh);
             scene.add(mesh);
 
-            // Increment the depth
-            objDepth += 20;
+            // Create edges for the mesh
+            const edges = new THREE.WireframeGeometry(geometry);
+            const line = new THREE.LineSegments(edges, lineMaterial);
+            lines.push(line);
+            scene.add(line);
 
+            // Increment the object number
+            objNum++;
         });
 
     })
 	.catch((error) => {
 		console.error(error)
 	});
-    console.log(ObjectList);
 
 
 // Animation loop
@@ -229,6 +265,21 @@ function animate() {
 
 	cube.rotation.x += 0.01;
 	cube.rotation.y += 0.01;
+
+    // Adjust positions of all meshes
+    let objNum = 0;
+    meshes.forEach((mesh:THREE.Mesh) => {
+        mesh.position.set(((objNum % 8)-3) * 2*params.scale, (Math.floor(objNum / 8)-3) * 2*params.scale, 0);
+        mesh.scale.set(params.scale, params.scale, params.scale);
+        objNum++;
+    });
+    objNum = 0;
+    lines.forEach((line:THREE.LineSegments) => {
+        line.position.set(((objNum % 8)-3) * 2*params.scale, (Math.floor(objNum / 8)-3) * 2*params.scale, 0);
+        line.scale.set(params.scale, params.scale, params.scale);
+        objNum++;
+    });
+
 
 }
 	
