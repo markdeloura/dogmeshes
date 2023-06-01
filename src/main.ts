@@ -132,44 +132,17 @@ fetch("combined_objects.json")
                     direction: (line[2] > 0)? true : false
                 });
             });
+
             // Traverse object and find the triangles using the vertex connectivity
             const triangles:Triangle[] = [];
-            lines.forEach((line:Line) => {
-                // Find all other lines that include vertIndex[0],
-                // Then find all other lines that include vertIndex[1],
-                const vert0Lines:Line[] = [];
-                const vert1Lines:Line[] = [];
-                lines.forEach((line2:Line) => {
-                    if (line2.vertIndex.includes(line.vertIndex[0])) {
-                        vert0Lines.push(line2);
-                    }
-                    if (line2.vertIndex.includes(line.vertIndex[1])) {
-                        vert1Lines.push(line2);
-                    }
-                });
-                // Now find the triangles by iterating through the vert0Lines.
-                //   We'll add the verts of line and of vert0Lines to a Set and then for each vert1Line,
-                //   we'll make a new set and add those vert1Line verts to it. Then we'll check if the
-                //   number of verts in the set is 3. If so, it's a triangle and we'll push it to the triangles array.
-                vert0Lines.forEach((line0:Line) => {
-                    vert1Lines.forEach((line1:Line) => {
-                        const triangleVerts:Set<number> = new Set();
-                        triangleVerts.add(line.vertIndex[0]);
-                        triangleVerts.add(line.vertIndex[1]);
-                        triangleVerts.add(line0.vertIndex[0]);
-                        triangleVerts.add(line0.vertIndex[1]);
-                        triangleVerts.add(line1.vertIndex[0]);
-                        triangleVerts.add(line1.vertIndex[1]);
-                        if (triangleVerts.size == 3) {
-                            const triangleVertsArray = Array.from(triangleVerts);
-                            triangles.push({
-                                vertIndex: [triangleVertsArray[0], triangleVertsArray[1], triangleVertsArray[2]]
-                            });
-                        }
+            object.triangles.forEach((triangle:any) => {
+                triangles.push({
+                    vertIndex: [triangle[0], triangle[1], triangle[2]]
                     });
-                });
             });
-            
+
+            console.log(triangles.length);
+
             // Add the object to the global ObjectList
             ObjectList.push({
                 vertices: vertices,
