@@ -53,6 +53,7 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
 
 // Resize
 window.addEventListener('resize', () =>
@@ -79,24 +80,71 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 gui.add(ambientLight, 'intensity').min(0).max(1).step(0.001);
 
-const directionalLight = new THREE.DirectionalLight(0x00ff00, 0.5);
-directionalLight.position.set(1, 1, 1);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+directionalLight.position.set(10, 10, 10);
+directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.width = 1024;
+directionalLight.shadow.mapSize.height = 1024;
+directionalLight.shadow.camera.near = 0.1;
+directionalLight.shadow.camera.far = 100;
 scene.add(directionalLight);
+gui.add(directionalLight, 'intensity').min(0).max(10).step(0.001);
 
 const dlHelper = new THREE.DirectionalLightHelper(directionalLight, 0.1);
 scene.add(dlHelper);
 
+const shadowCameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+scene.add(shadowCameraHelper);
+
 // Materials
 
 // Create a new material
-const cubeMaterial = new THREE.MeshStandardMaterial();
+const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 cubeMaterial.roughness = 0.4;
 const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
 // Object geometry
-const geometry = new THREE.BoxGeometry();
+const geometry = new THREE.BoxGeometry(1,1,1);
 const cube = new THREE.Mesh(geometry, cubeMaterial);
+cube.castShadow = true;
+cube.receiveShadow = true;
 scene.add(cube);
+
+// Create a checkerboard texture with a specified size and color
+function createCheckerboardTexture(size:number, color1:number, color2:number):THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    if (!context) {
+        throw new Error('Could not create 2D context for canvas');
+    }
+    context.fillStyle = `rgb(${color1}, ${color1}, 0)`;
+    context.fillRect(0, 0, size, size);
+    context.fillStyle = `rgb(${color2}, 0, ${color2})`;
+    for (let y = 0; y < size; y += 16) {
+        for (let x = 0; x < size; x += 16) {
+            context.fillRect(x, y, 15, 15);
+        }
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(10, 10);
+    return texture;
+}
+
+// Create a tiled ground plane with a checkerboard on it and add it to the scene
+const groundPlaneGeometry = new THREE.PlaneGeometry(10, 10, 10, 10);
+const groundPlaneMaterial = new THREE.MeshStandardMaterial({
+    map: createCheckerboardTexture(256, 255, 127),
+    side: THREE.DoubleSide,
+    flatShading: false 
+});
+const groundPlane = new THREE.Mesh(groundPlaneGeometry, groundPlaneMaterial);
+groundPlane.rotation.x = Math.PI / 2;
+groundPlane.receiveShadow = true;
+scene.add(groundPlane);
 
 const clock = new THREE.Clock();
 
@@ -204,6 +252,8 @@ fetch("combined_objects.json")
             // Create the mesh
             const faceMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });  // Adjust material as needed
             const mesh = new THREE.Mesh(geometry, faceMaterial);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
             meshes.push(mesh);
             scene.add(mesh);
 
@@ -253,7 +303,7 @@ function animate() {
         objNum++;
     });
 
-
+    shadowCameraHelper.update();
 }
 	
 animate();
