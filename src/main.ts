@@ -15,6 +15,8 @@ interface Line {
 };
 interface Triangle {
     vertIndex:number[];
+    lineIndex:number[];
+    connectIndex:number[];
 };
 interface FoldyObject {
     vertices: Vertex[];
@@ -38,7 +40,7 @@ const camera = new THREE.PerspectiveCamera(
     0.1,
     1000
 );
-camera.position.z = 5;
+camera.position.set(0.5,7.2,9.1);
 scene.add(camera);
 
 // Sizes
@@ -49,7 +51,8 @@ const sizes = {
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
-	canvas:canvas
+	canvas:canvas,
+    antialias: true,
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -74,6 +77,7 @@ window.addEventListener('resize', () =>
 // Controls
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI/2;
 
 // Lights
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -90,11 +94,11 @@ directionalLight.shadow.camera.far = 100;
 scene.add(directionalLight);
 gui.add(directionalLight, 'intensity').min(0).max(10).step(0.001);
 
-const dlHelper = new THREE.DirectionalLightHelper(directionalLight, 0.1);
-scene.add(dlHelper);
+//const dlHelper = new THREE.DirectionalLightHelper(directionalLight, 0.1);
+//scene.add(dlHelper);
 
-const shadowCameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
-scene.add(shadowCameraHelper);
+//const shadowCameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+//scene.add(shadowCameraHelper);
 
 // Materials
 
@@ -135,7 +139,7 @@ function createCheckerboardTexture(size:number, color1:number, color2:number):TH
 }
 
 // Create a tiled ground plane with a checkerboard on it and add it to the scene
-const groundPlaneGeometry = new THREE.PlaneGeometry(10, 10, 10, 10);
+const groundPlaneGeometry = new THREE.PlaneGeometry(50, 50, 50, 50);
 const groundPlaneMaterial = new THREE.MeshStandardMaterial({
     map: createCheckerboardTexture(256, 255, 127),
     side: THREE.DoubleSide,
@@ -161,8 +165,11 @@ gui.add(params, 'scale').min(0).max(10).step(0.01);
 fetch("combined_objects.json")
     .then((response) => response.json())
     .then((data) => {
+        const numObjects = data.objects.length;
+        console.log(`Found ${numObjects} objects`);
+
         // For each object in the data, make a new one in the global ObjectList
-        data.objects.forEach((object:any) => {
+        data.objects.forEach((object:any, objIndex:number) => {
             // Get the vertices
             const vertices:Vertex[] = [];
             object.vertices.forEach((vertex:any) => {
@@ -185,11 +192,54 @@ fetch("combined_objects.json")
             const triangles:Triangle[] = [];
             object.triangles.forEach((triangle:any) => {
                 triangles.push({
-                    vertIndex: [triangle[0], triangle[1], triangle[2]]
+                    vertIndex: [triangle[0], triangle[1], triangle[2]],
+                    lineIndex: [],
+                    connectIndex: []
                     });
             });
 
-            console.log(triangles.length);
+            // Using the triangles vertIndex vertices, find the lines that make up the triangle
+            //   and save them as a lineIndex array using lines indices
+            triangles.forEach((triangle:Triangle) => {
+                triangle.lineIndex = [];
+                triangle.vertIndex.forEach((vertIndex:number, index:number) => {
+                    let nextIndex = (index + 1) % 3;
+                    let lineIndex = 0;
+                    lines.forEach((line:Line, index:number) => {
+                        if (line.vertIndex.includes(vertIndex) && line.vertIndex.includes(triangle.vertIndex[nextIndex])) {
+                            lineIndex = index;
+                        }
+                    });
+                    triangle.lineIndex.push(lineIndex);
+                });
+            });
+
+            // Using the trilines array, find the triangle connectivity and save it as a connectIndex array.
+            //   The connectIndex array is the index of the triangle that shares the line.
+            //   If there is no other triangle that shares the line, the connectIndex is -1.
+            triangles.forEach((triangle:Triangle) => {
+                triangle.connectIndex = [];
+                triangle.lineIndex.forEach((lineIndex:number, index:number) => {
+                    let nextIndex = (index + 1) % 3;
+                    let connectIndex = -1;
+                    triangles.forEach((tri:Triangle, index:number) => {
+                        if (tri == triangle) {
+                            return;
+                        }
+                        if (tri.lineIndex.includes(lineIndex)) {
+                            connectIndex = index;
+                        }
+                    });
+                    triangle.connectIndex.push(connectIndex);
+                });
+            });
+
+            // Log the vertices, lines, and triangles of the last object
+            if (objIndex == numObjects - 1) {
+                console.log(vertices);
+                console.log(lines);
+                console.log(triangles);
+            }
 
             // Add the object to the global ObjectList
             ObjectList.push({
@@ -232,7 +282,7 @@ fetch("combined_objects.json")
                 vertex.y -= centerPoint.y;
                 vertex.x /= maxDistance;
                 vertex.y /= maxDistance;
-                verticesArray.push(vertex.x, vertex.y, 0);
+                verticesArray.push(vertex.x, 0, vertex.y);
             });
 
             // Create an array to store the faces (indices)
@@ -292,18 +342,18 @@ function animate() {
     // Adjust positions of all meshes
     let objNum = 0;
     meshes.forEach((mesh:THREE.Mesh) => {
-        mesh.position.set(((objNum % 8)-3) * 2*params.scale, (Math.floor(objNum / 8)-3) * 2*params.scale, 0);
+        mesh.position.set(((objNum % 8)-3) * 2*params.scale, 0.25, (Math.floor(objNum / 8)-3) * 2*params.scale);
         mesh.scale.set(params.scale, params.scale, params.scale);
         objNum++;
     });
     objNum = 0;
     lines.forEach((line:THREE.LineSegments) => {
-        line.position.set(((objNum % 8)-3) * 2*params.scale, (Math.floor(objNum / 8)-3) * 2*params.scale, 0);
+        line.position.set(((objNum % 8)-3) * 2*params.scale, 0.25, (Math.floor(objNum / 8)-3) * 2*params.scale);
         line.scale.set(params.scale, params.scale, params.scale);
         objNum++;
     });
 
-    shadowCameraHelper.update();
+    //shadowCameraHelper.update();
 }
 	
 animate();
